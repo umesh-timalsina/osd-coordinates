@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>OSD Tile Sources Coordinates Map</title>
+    <script type="text/css" src="css/normalize.css"></script>
+</head>
+<body>
+<h1>OSD Coordinates Map in MultiImage Mode</h1>
+<div id="osd-viewer" style="width: 100%; height: 600px;">
+</div>
+<div id="output" style="margin: 0 auto; width: 85%">
+    <h1></h1>
+    <div></div>
+</div>
+</div>
+
+
+<script type="text/javascript"
+        src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/2.4.2/openseadragon.min.js"></script>
+<script>
+    const image = {
+        type: 'image',
+        url: '//images.pexels.com/photos/6642124/pexels-photo-6642124.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260'
+    }
+
+    let tileSources = Array(20).fill(image);
+
+    const hitTest = function (viewer, position) {
+        let box;
+        const count = viewer.world.getItemCount();
+        for (let i = 0; i < count; i++) {
+            box = viewer.world.getItemAt(i).getBounds();
+            if(position.x > box.x && position.y > box.y &&
+                position.x < box.x + box.width && position.y < box.y + box.height) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    const createOSDViewer = () => {
+        const viewer = OpenSeadragon({
+            id: 'osd-viewer',
+            debugMode: false,
+            prefixUrl: 'https://cdn.jsdelivr.net/npm/openseadragon@2.4/build/openseadragon/images/',
+            tileSources: tileSources,
+            collectionMode: true
+        });
+
+        return viewer;
+    };
+
+    const populateImageCoordinates = (index, url, viewportCoords, imgCoords) => {
+        const infoDiv = document.querySelector('#output');
+        const titleH1 = infoDiv.getElementsByTagName('h1')[0];
+        titleH1.innerText = `Image-${index}`;
+        const infoContainer = infoDiv.getElementsByTagName('div')[0];
+        infoContainer.innerHTML = `<p>URL: ${url}</p><br/>
+                                   <p>Viewport Coordinates: (${viewportCoords.x}, ${viewportCoords.y})</p><br>
+                                   <p>Image Coordinates: (${imgCoords.x}, ${imgCoords.y})</p> `
+
+    };
+
+    const removeImageCoordinates = () => {
+        const infoDiv = document.querySelector('#output');
+        const titleH1 = infoDiv.getElementsByTagName('h1')[0];
+        titleH1.innerText = '';
+        const infoContainer = infoDiv.getElementsByTagName('div')[0];
+        infoContainer.innerHTML = '';
+    }
+
+    const addMouseMoveEvent = (viewer) => {
+        const viewerEl = document.querySelector("#osd-viewer");
+        viewerEl.addEventListener('mousemove', event => {
+            const pixel = new OpenSeadragon.Point(event.clientX, event.clientY);
+            pixel.y -= viewerEl.offsetTop;
+            const viewportCoords = viewer.viewport.pointFromPixel(pixel);
+            const index = hitTest(viewer, viewportCoords);
+            const contentDiv = document.querySelector('#output');
+            if (index !== -1) {
+                const mouseOverTileSource = viewer.world.getItemAt(index);
+                const imgCoords = mouseOverTileSource.viewportToImageCoordinates(viewportCoords);
+                console.log(imgCoords);
+                const imageURL = mouseOverTileSource.source.url || mouseOverTileSource.source['@id'];
+                populateImageCoordinates(index, imageURL, viewportCoords, imgCoords);
+            } else {
+                removeImageCoordinates();
+            }
+        });
+    }
+
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const viewer = createOSDViewer();
+        addMouseMoveEvent(viewer);
+     });
+</script>
+</body>
+</html>
